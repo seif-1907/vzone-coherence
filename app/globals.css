@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #1c1c1c;
+  --color-muted: #6b6b6b;
+  --color-line: #e8e4da;
+  --color-sage: #c9a227;      /* gold */
+  --color-sage-dark: #9a7b12; /* dark gold */
+  --color-sand: #fdf6e0;      /* cream cards */
+  --color-navy: #203876;
+  --color-navy-dark: #1a2f63;
+  --color-gold: #c9a227;
+  --font-serif: "Baskervville", "Libre Baskerville", Georgia, serif;
+  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+}
+
+body { background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); }
+h1, h2, h3, .font-serif { font-family: var(--font-serif); font-weight: 400; letter-spacing: 0.02em; }
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center rounded-full bg-navy px-7 py-3 text-sm font-semibold tracking-wide text-white shadow-md transition hover:bg-navy-dark disabled:opacity-50; }
+  .btn-outline { @apply inline-flex items-center justify-center rounded-full border border-navy px-6 py-2.5 text-sm tracking-wide text-navy transition hover:bg-navy hover:text-white; }
+  .input { @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm outline-none focus:border-sage; }
+  .label { @apply mb-1 block text-xs uppercase tracking-wider text-muted; }
+  .card { @apply rounded-2xl border border-line bg-white p-6 shadow-sm; }
+}
