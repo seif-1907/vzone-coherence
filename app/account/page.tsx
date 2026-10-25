@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { fmtDate } from "@/lib/utils";
+import { isPrelaunch, launchDate } from "@/lib/launch";
 
 export const metadata: Metadata = { title: "My classes" };
 
@@ -11,7 +12,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
   const { purchased } = await searchParams;
   const supabase = await createClient();
 
-  const { data: enrollments } = await supabase.from("enrollments").select("course_id, courses(id,slug,title,tagline,kind)").eq("user_id", profile.id).order("created_at", { ascending: false });
+  const { data: enrollments } = await supabase.from("enrollments").select("course_id, courses(id,slug,title,tagline,kind,launch_at)").eq("user_id", profile.id).order("created_at", { ascending: false });
   const courseIds = (enrollments ?? []).map((e) => e.course_id);
   const [{ data: lessons }, { data: progress }, { data: live }] = await Promise.all([
     courseIds.length ? supabase.from("lessons").select("id,course_id,position,created_at").in("course_id", courseIds).order("position").order("created_at") : Promise.resolve({ data: [] }),
@@ -22,7 +23,7 @@ export default async function Account({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="mx-auto max-w-5xl px-5 py-16">
-      {purchased && <div className="mb-8 rounded-xl bg-sage/15 px-5 py-4 text-sage-dark">Thank you! Your classes are ready below.</div>}
+      {purchased && <div className="mb-8 rounded-xl bg-sage/15 px-5 py-4 text-sage-dark">Thank you! Your confirmation has been sent to {profile.email}. If you reserved a pre-launch program, we’ll email you again when full access opens.</div>}
       <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
         <div><h1 className="text-4xl">Hello{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}</h1><p className="text-muted">{profile.email}</p></div>
         <div className="flex gap-3">
@@ -37,16 +38,19 @@ export default async function Account({ searchParams }: { searchParams: Promise<
       ) : (
         <div className="grid gap-5 md:grid-cols-2">
           {enrollments!.map((e) => {
-            const c = e.courses as unknown as { id: string; slug: string; title: string; tagline: string | null; kind: string };
+            const c = e.courses as unknown as { id: string; slug: string; title: string; tagline: string | null; kind: string; launch_at: string | null };
             const ls = (lessons ?? []).filter((l) => l.course_id === c.id);
             const n = ls.filter((l) => done.has(l.id)).length;
             const next = ls.find((l) => !done.has(l.id)) ?? ls[0];
+            const prelaunch = isPrelaunch(c);
             return (
               <article key={c.id} className="card">
                 <h3 className="text-2xl">{c.title}</h3>
                 <p className="mt-1 text-sm text-muted">{c.tagline}</p>
-                {ls.length > 0 && (<div className="mt-4"><div className="h-1.5 rounded-full bg-sand"><div className="h-1.5 rounded-full bg-sage" style={{ width: `${(n / ls.length) * 100}%` }} /></div><p className="mt-1 text-xs text-muted">{n} of {ls.length} classes completed</p></div>)}
-                <div className="mt-5">{next ? <Link className="btn" href={`/watch/${next.id}`}>{n ? "Continue" : "Start"}</Link> : <span className="text-sm text-muted">{c.kind === "live" ? "See live classes below" : "Content coming soon"}</span>}</div>
+                {prelaunch ? (
+                  <div className="mt-4 rounded-lg bg-sand px-4 py-3 text-sm"><p className="font-medium text-sage-dark">Your place is reserved.</p><p className="mt-1 text-muted">Full access opens {launchDate(c.launch_at!)}. We’ll notify you by email.</p></div>
+                ) : ls.length > 0 && (<div className="mt-4"><div className="h-1.5 rounded-full bg-sand"><div className="h-1.5 rounded-full bg-sage" style={{ width: `${(n / ls.length) * 100}%` }} /></div><p className="mt-1 text-xs text-muted">{n} of {ls.length} classes completed</p></div>)}
+                <div className="mt-5">{prelaunch ? <Link className="btn-outline" href={`/programs/${c.slug}`}>View welcome video</Link> : next ? <Link className="btn" href={`/watch/${next.id}`}>{n ? "Continue" : "Start"}</Link> : <span className="text-sm text-muted">{c.kind === "live" ? "See live classes below" : "Content coming soon"}</span>}</div>
               </article>
             );
           })}

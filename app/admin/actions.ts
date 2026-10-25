@@ -23,9 +23,14 @@ export async function createCourse(f: FormData) {
 
 export async function updateCourse(id: string, f: FormData) {
   await requireAdmin();
+  const priceCents = Math.round(Number(f.get("price") || 0) * 100);
+  const presalePrice = s(f, "presale_price") ? Math.round(Number(f.get("presale_price")) * 100) : null;
+  if (presalePrice != null && presalePrice >= priceCents) throw new Error("The pre-launch price must be lower than the regular price.");
   const { error } = await createAdmin().from("courses").update({
     title: s(f, "title"), slug: slugify(s(f, "slug")), tagline: s(f, "tagline") || null, description: s(f, "description") || null,
-    kind: s(f, "kind"), price_cents: Math.round(Number(f.get("price") || 0) * 100), cover_url: s(f, "cover_url") || null,
+    kind: s(f, "kind"), price_cents: priceCents, presale_price_cents: presalePrice,
+    launch_at: s(f, "launch_at") ? new Date(s(f, "launch_at")).toISOString() : null,
+    cover_url: s(f, "cover_url") || null,
     published: f.get("published") === "on", position: n(f, "position"),
   }).eq("id", id);
   if (error) throw new Error(error.message);
@@ -48,7 +53,7 @@ export async function addLesson(courseId: string, f: FormData) {
   const { data: last } = await db.from("lessons").select("position").eq("course_id", courseId).order("position", { ascending: false }).limit(1).maybeSingle();
   const { data: lesson, error } = await db.from("lessons").insert({
     course_id: courseId, title: s(f, "title"), description: s(f, "description") || null,
-    position: (last?.position ?? 0) + 1, is_preview: f.get("is_preview") === "on",
+    position: (last?.position ?? 0) + 1, is_preview: f.get("is_preview") === "on", cover_url: s(f, "cover_url") || null,
   }).select("id").single();
   if (error) throw new Error(error.message);
   await db.from("lesson_media").insert({ lesson_id: lesson.id, vimeo_id: v.id, vimeo_hash: v.hash });

@@ -6,6 +6,7 @@ Next.js 16 (App Router) · Supabase (Postgres, auth, file storage) · PayPal · 
 
 1. **Supabase**: create a project, open the SQL editor and run `supabase/schema.sql`.
    Then in Authentication → URL configuration set the Site URL to your domain and add `https://YOURDOMAIN/auth/callback` as a redirect URL.
+   For an existing project, run `supabase/migrations/20261025_vzone_start_presale.sql` instead of re-running the full schema.
 2. **Env vars**: copy `.env.example` to `.env.local` and fill it in (Supabase keys, PayPal, Brevo, `CRON_SECRET`).
 3. `npm install && npm run dev`
 4. Sign up on the site with Vilma's email, then in the SQL editor run:
@@ -26,6 +27,7 @@ Next.js 16 (App Router) · Supabase (Postgres, auth, file storage) · PayPal · 
 | Access statistics | `/admin/stats` (per video: views, unique viewers, time watched) and per client page |
 | Online classes | `/admin/live` schedules; rooms open at `/live/[id]` (embedded Jitsi) |
 | Purchase, promo code | Cart → PayPal. Promo codes (percent or fixed, max uses, expiry) at `/admin/promos`. Prices are always computed on the server |
+| V-Zone Start pre-sale | In Admin → Courses, set a launch date and a lower pre-launch price. Before launch, only the first video marked “Free preview” can play; purchasers receive confirmation, see their reserved place in My classes, and receive an email when the scheduled launch notification runs. |
 | Watch in order | Enforced in the database (`can_watch`): a video unlocks when the previous one reaches 90% |
 | Reminders | Per-video reminders, live class and meeting reminders, plus a nudge to inactive learners (`/api/cron/reminders`) |
 | Preview/download documents | Private storage, short-lived signed links, per-document download switch |
@@ -39,4 +41,6 @@ Next.js 16 (App Router) · Supabase (Postgres, auth, file storage) · PayPal · 
 - **Video privacy**: in Vimeo set each video's privacy to "Hide from Vimeo" and restrict embedding to your domain. Video ids are only sent to people allowed to watch.
 - **Live classes**: the public `meet.jit.si` server limits embedded calls. For real use, self-host Jitsi or use 8x8 JaaS and set `NEXT_PUBLIC_JITSI_DOMAIN` (JaaS also needs JWT tokens, which are not implemented yet).
 - **Cover images** are pasted as URLs for now (no upload UI).
+- **V-Zone Start setup**: the supplied cosmic artwork is the default Start cover and fallback video cover. In Admin → Courses → V-Zone Start, add “Welcome to V-Zone Start” as the first video, paste its supplied description, and turn on “Free preview.” Add “V-Zone Tools” second with its supplied description; it stays locked until the course launch date.
+- **Pre-sale defaults**: the schema/migration uses a $200 pre-launch price for the existing $300 V-Zone Start course and the next November 1 launch date. Both are editable in Admin → Courses before publishing the offer.
 - The seed data creates the four offers from the old site (Start $300, Embody $500, ONE by application, LIVE $1). Edit prices and text in the admin.

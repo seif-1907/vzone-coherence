@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdmin } from "@/lib/supabase/server";
 import { sendEmail, emailShell } from "@/lib/brevo";
+import { sendLaunchNotifications } from "@/lib/launchNotifications";
 
 // Runs every 15 minutes (see vercel.json). Sends due reminders + a gentle nudge to inactive learners.
 export async function GET(req: Request) {
   if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const db = createAdmin();
   const site = process.env.NEXT_PUBLIC_SITE_URL;
-  let sent = 0;
+  let sent = await sendLaunchNotifications();
 
   // 1) explicit reminders (lessons, live classes, meetings)
   const { data: due } = await db.from("reminders").select("*, profiles(email,full_name)").is("sent_at", null).lte("remind_at", new Date().toISOString()).limit(200);

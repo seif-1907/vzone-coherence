@@ -6,8 +6,9 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { createClient } from "@/lib/supabase/client";
 import { useCart } from "./Cart";
 import { money } from "@/lib/utils";
+import { currentPrice, isPrelaunch } from "@/lib/launch";
 
-type C = { id: string; title: string; price_cents: number; currency: string };
+type C = { id: string; title: string; price_cents: number; presale_price_cents: number | null; launch_at: string | null; currency: string };
 
 export default function CartView() {
   const { ids, remove, clear } = useCart();
@@ -26,10 +27,10 @@ export default function CartView() {
   }, []);
   useEffect(() => {
     if (!ids.length) { setCourses([]); return; }
-    createClient().from("courses").select("id,title,price_cents,currency").in("id", ids).eq("published", true).then(({ data }) => setCourses((data as C[]) ?? []));
+    createClient().from("courses").select("id,title,price_cents,presale_price_cents,launch_at,currency").in("id", ids).eq("published", true).then(({ data }) => setCourses((data as C[]) ?? []));
   }, [ids]);
 
-  const subtotal = courses.reduce((a, c) => a + c.price_cents, 0);
+  const subtotal = courses.reduce((a, c) => a + currentPrice(c), 0);
   const currency = courses[0]?.currency ?? "USD";
   const total = totals?.total ?? subtotal;
 
@@ -67,8 +68,8 @@ export default function CartView() {
       <ul className="divide-y divide-line rounded-xl border border-line bg-white">
         {courses.map((c) => (
           <li key={c.id} className="flex items-center justify-between px-5 py-4">
-            <div><div className="font-serif text-lg">{c.title}</div><button onClick={() => remove(c.id)} className="text-xs text-muted underline">Remove</button></div>
-            <div>{money(c.price_cents, c.currency)}</div>
+            <div><div className="font-serif text-lg">{c.title}</div>{isPrelaunch(c) && <div className="text-xs text-sage-dark">Pre-launch price</div>}<button onClick={() => remove(c.id)} className="text-xs text-muted underline">Remove</button></div>
+            <div>{money(currentPrice(c), c.currency)}</div>
           </li>
         ))}
       </ul>

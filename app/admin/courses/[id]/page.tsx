@@ -26,6 +26,8 @@ export default async function EditCourse({ params }: { params: Promise<{ id: str
         <div className="md:col-span-2"><label className="label">Description</label><textarea name="description" rows={5} defaultValue={c.description ?? ""} className="input" /></div>
         <div><label className="label">Type</label><select name="kind" defaultValue={c.kind} className="input"><option value="course">Course</option><option value="live">Live</option><option value="one_to_one">One-to-one</option></select></div>
         <div><label className="label">Price ({c.currency})</label><input name="price" type="number" step="0.01" min="0" defaultValue={c.price_cents / 100} className="input" /></div>
+        <div><label className="label">Pre-launch price ({c.currency})</label><input name="presale_price" type="number" step="0.01" min="0" defaultValue={c.presale_price_cents != null ? c.presale_price_cents / 100 : ""} placeholder="Optional" className="input" /></div>
+        <div><label className="label">Launch date and time</label><input name="launch_at" type="datetime-local" defaultValue={c.launch_at ? c.launch_at.slice(0, 16) : ""} className="input" /></div>
         <div><label className="label">Cover image URL</label><input name="cover_url" defaultValue={c.cover_url ?? ""} className="input" /></div>
         <div><label className="label">Menu order</label><input name="position" type="number" defaultValue={c.position} className="input" /></div>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="published" defaultChecked={c.published} /> Published (visible on the site)</label>
@@ -54,6 +56,7 @@ export default async function EditCourse({ params }: { params: Promise<{ id: str
           <input name="title" required placeholder="Title" className="input" />
           <input name="vimeo" required placeholder="Vimeo link or ID (e.g. https://vimeo.com/123456789/abcdef1234)" className="input" />
           <textarea name="description" rows={2} placeholder="Description (optional)" className="input" />
+          <input name="cover_url" placeholder="Cover image URL (optional)" className="input" />
           <label className="flex gap-2 text-sm"><input type="checkbox" name="is_preview" /> Free preview (anyone can watch)</label>
           <div><button className="btn">Add video</button></div>
         </form>

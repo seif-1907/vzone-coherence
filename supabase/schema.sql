@@ -38,6 +38,8 @@ create table public.courses (
   description text,
   kind text not null default 'course' check (kind in ('course','live','one_to_one')),
   price_cents integer not null default 0 check (price_cents >= 0),
+  presale_price_cents integer check (presale_price_cents >= 0 and presale_price_cents < price_cents),
+  launch_at timestamptz,
   currency text not null default 'USD',
   cover_url text,
   published boolean not null default false,
@@ -53,6 +55,7 @@ create table public.lessons (
   description text,
   duration_seconds integer,
   is_preview boolean not null default false,
+  cover_url text,
   created_at timestamptz not null default now()
 );
 create index on public.lessons(course_id, position);
@@ -117,6 +120,7 @@ create table public.enrollments (
   course_id uuid not null references public.courses(id) on delete cascade,
   source text not null default 'purchase' check (source in ('purchase','manual','promo')),
   order_id uuid references public.orders(id),
+  launch_notified_at timestamptz,
   created_at timestamptz not null default now(),
   primary key (user_id, course_id)
 );
@@ -204,11 +208,18 @@ $$;
 -- May the current user watch this lesson right now? Enforces "in order" viewing.
 create or replace function public.can_watch(p_lesson uuid) returns boolean
 language plpgsql stable security definer set search_path = public as $$
-declare l lessons%rowtype; prev uuid;
+declare l lessons%rowtype; c courses%rowtype; first_lesson uuid; prev uuid;
 begin
   select * into l from lessons where id = p_lesson;
   if not found then return false; end if;
-  if is_admin() or l.is_preview then return true; end if;
+  select * into c from courses where id = l.course_id;
+  if is_admin() then return true; end if;
+  -- A pre-launch program shows only its first, explicitly marked preview video.
+  if c.launch_at is not null and c.launch_at > now() then
+    select id into first_lesson from lessons where course_id = l.course_id order by position, created_at limit 1;
+    return l.id = first_lesson and l.is_preview;
+  end if;
+  if l.is_preview then return true; end if;
   if not is_enrolled(l.course_id) then return false; end if;
   select id into prev from lessons
     where course_id = l.course_id and (position, created_at) < (l.position, l.created_at)
@@ -321,8 +332,8 @@ create policy "admin update covers" on storage.objects for update
   using (bucket_id = 'covers' and public.is_admin());
 
 -- Seed the offers from the current site (edit prices and text in the admin later)
-insert into public.courses (slug, title, tagline, description, kind, price_cents, published, position) values
-  ('v-zone-start',  'V-Zone Start',  'The foundational program to build strength and align your mindset', null, 'course', 30000, true, 1),
+insert into public.courses (slug, title, tagline, description, kind, price_cents, presale_price_cents, launch_at, cover_url, published, position) values
+  ('v-zone-start',  'V-Zone Start',  'The foundational program to build strength and align your mindset', 'Welcome to V-Zone Start\n\nI celebrate you, and I am proud of you for choosing yourself and taking this step.\n\nV-Zone Start is your foundation.\n\nFoundation means learning how to bring your mind, body, breath, and energy into coherence—to work together as one, in one direction.\n\nBecause you are not separate pieces.\n\nThe way you think affects the way you breathe.\nThe way you breathe affects the way you move.\nThe way you move affects the way you feel.\nThe way you direct your attention and energy affects the way you experience yourself and everything you do.\n\nEverything works together.\n\nThis is what we are going to practice in V-Zone Start.\n\nYou will learn how to approach your workout, how to be fully present inside it, how to direct your attention, how to observe your thoughts, how to use your breath, how to feel your muscles and movement, and how to recognize where your energy is going.\n\nWe are not training these things separately.\n\nWe are learning to use them together.\n\nEvery workout becomes a practice of awareness, presence, discipline, responsibility, consistency, and choice.\n\nAnd what you practice here does not stop when the workout finishes. You are developing a way of operating that you carry with you—because the same mind, the same breath, the same body, the same energy, and the same choices are with you everywhere.\n\nThis is Life in Coherence.\n\nAnd this is why we begin with the foundation.', 'course', 30000, 20000, '2026-11-01T00:00:00Z', '/images/v-zone-start-cover.png', true, 1),
   ('v-zone-embody', 'V-Zone Embody', 'Deepen your practice and fully integrate mind-body alignment', null, 'course', 50000, true, 2),
   ('v-zone-one',    'V-Zone ONE',    'Live One-to-One Coherence with Vilma',
 'You’ve entered a space created for remembering who you are.
