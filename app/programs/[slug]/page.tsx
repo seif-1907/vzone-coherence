@@ -39,11 +39,11 @@ export default async function Program({ params }: { params: Promise<{ slug: stri
 
   return (
     <div className="py-10">
-     <div className="relative overflow-hidden rounded-3xl bg-navy px-6 py-14 text-white shadow-md md:px-12" style={course.cover_url ? { backgroundImage: `linear-gradient(rgba(12,18,42,.68), rgba(12,18,42,.83)), url(${course.cover_url})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}>
+     <div className="relative rounded-3xl border border-line bg-white px-6 py-14 text-navy shadow-sm md:px-12">
       <div className="relative mx-auto max-w-3xl text-center">
         {prelaunch && <p className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-[#f5c95c]">Pre-launch access</p>}
         <h1 className="font-serif text-5xl font-bold">{course.title}</h1>
-        {course.tagline && <p className="mt-3 text-lg font-medium text-white/90">{course.tagline}</p>}
+        {course.tagline && <p className="mt-3 text-lg font-medium text-muted">{course.tagline}</p>}
         {prelaunch && launchLabel && <p className="mt-6 font-serif text-xl text-[#f5c95c]">Full program opens {launchLabel}</p>}
       </div>
      </div>
