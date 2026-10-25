@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdmin, createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import VideoPlayer from "@/components/VideoPlayer";
 import DocumentList from "@/components/DocumentList";
@@ -33,7 +33,10 @@ export default async function Watch({ params }: { params: Promise<{ lessonId: st
   const idx = list.findIndex((l) => l.id === lessonId);
   const unlocked = (i: number) => prelaunch ? (i === 0 && list[i].is_preview) : enrolled ? (i === 0 || done.has(list[i - 1].id) || profile?.role === "admin" || list[i].is_preview) : list[i].is_preview;
   const next = list[idx + 1];
-  const media = canWatch ? (await supabase.from("lesson_media").select("vimeo_id,vimeo_hash").eq("lesson_id", lessonId).maybeSingle()).data : null;
+  const media = canWatch ? (await supabase.from("lesson_media").select("vimeo_id,vimeo_hash,storage_path").eq("lesson_id", lessonId).maybeSingle()).data : null;
+  const videoUrl = media?.storage_path
+    ? (await createAdmin().storage.from("videos").createSignedUrl(media.storage_path, 60 * 60 * 4)).data?.signedUrl ?? null
+    : null;
   const startAt = (progress ?? []).find((p) => p.lesson_id === lessonId)?.last_position_seconds ?? 0;
   const visibleDocs = (docs ?? []).filter((d) => !d.lesson_id || d.lesson_id === lessonId);
 
@@ -43,9 +46,9 @@ export default async function Watch({ params }: { params: Promise<{ lessonId: st
         <Link href={`/programs/${course.slug}`} className="text-sm text-muted underline">← {course.title}</Link>
         <h1 className="mb-6 mt-2 text-3xl">{lesson.title}</h1>
 
-        {canWatch && media ? (
+        {canWatch && media && (videoUrl || media.vimeo_id) ? (
           <>
-            <VideoPlayer lessonId={lessonId} vimeoId={media.vimeo_id} vimeoHash={media.vimeo_hash} startAt={startAt} track={!!profile}
+            <VideoPlayer lessonId={lessonId} videoUrl={videoUrl} vimeoId={media.vimeo_id} vimeoHash={media.vimeo_hash} startAt={startAt} track={!!profile}
               nextHref={next && unlocked(idx + 1) ? `/watch/${next.id}` : null} />
             {lesson.description && <p className="mt-6 whitespace-pre-line text-muted">{lesson.description}</p>}
             {profile && enrolled && <div className="mt-6"><ReminderButton lessonId={lessonId} active={!!reminder} /></div>}

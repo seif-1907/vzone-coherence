@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdmin } from "@/lib/supabase/server";
-import { addLesson, deleteCourse, deleteDocument, deleteLesson, moveLesson, toggleLessonPreview, updateCourse, updateDocument } from "../../actions";
+import { deleteCourse, deleteDocument, deleteLesson, moveLesson, toggleLessonPreview, updateCourse, updateDocument } from "../../actions";
 import DocUploader from "@/components/DocUploader";
+import VideoUploader from "@/components/VideoUploader";
 import { fmtDuration } from "@/lib/utils";
 
 export default async function EditCourse({ params }: { params: Promise<{ id: string }> }) {
@@ -51,15 +52,7 @@ export default async function EditCourse({ params }: { params: Promise<{ id: str
           ))}
           {!(lessons ?? []).length && <li className="px-5 py-3 text-muted">No videos yet.</li>}
         </ol>
-        <form action={addLesson.bind(null, id)} className="card mt-4 grid gap-3">
-          <h3 className="text-lg">Add a video</h3>
-          <input name="title" required placeholder="Title" className="input" />
-          <input name="vimeo" required placeholder="Vimeo link or ID (e.g. https://vimeo.com/123456789/abcdef1234)" className="input" />
-          <textarea name="description" rows={2} placeholder="Description (optional)" className="input" />
-          <input name="cover_url" placeholder="Cover image URL (optional)" className="input" />
-          <label className="flex gap-2 text-sm"><input type="checkbox" name="is_preview" /> Free preview (anyone can watch)</label>
-          <div><button className="btn">Add video</button></div>
-        </form>
+        <VideoUploader courseId={id} />
       </section>
 
       <section>

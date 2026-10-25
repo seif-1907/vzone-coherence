@@ -3,11 +3,17 @@ import Player from "@vimeo/player";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-type Props = { lessonId: string; vimeoId: string; vimeoHash: string | null; startAt: number; track: boolean; nextHref?: string | null };
+type Props = { lessonId: string; vimeoId?: string | null; vimeoHash?: string | null; videoUrl?: string | null; startAt: number; track: boolean; nextHref?: string | null };
 
 // Plays the Vimeo video and reports watch time every 15s (while actually playing) so the
 // instructor can see view counts and durations, and so the next lesson unlocks at 90%.
-export default function VideoPlayer({ lessonId, vimeoId, vimeoHash, startAt, track, nextHref }: Props) {
+export default function VideoPlayer(props: Props) {
+  if (props.videoUrl) return <StorageVideoPlayer {...props} videoUrl={props.videoUrl} />;
+  if (!props.vimeoId) return null;
+  return <VimeoVideoPlayer {...props} vimeoId={props.vimeoId} />;
+}
+
+function VimeoVideoPlayer({ lessonId, vimeoId, vimeoHash = null, startAt, track, nextHref }: Props & { vimeoId: string }) {
   const box = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -49,4 +55,41 @@ export default function VideoPlayer({ lessonId, vimeoId, vimeoHash, startAt, tra
       {nextHref && <a href={nextHref} className="mt-3 inline-block text-sm underline">Next lesson →</a>}
     </div>
   );
+}
+
+function StorageVideoPlayer({ lessonId, videoUrl, startAt, track, nextHref }: Props & { videoUrl: string }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    const sessionId = crypto.randomUUID();
+    let pending = 0, lastT = -1, completedSent = false;
+    const flush = (keepalive = false) => {
+      if (!track || (pending < 1 && el.currentTime === 0)) return;
+      const body = JSON.stringify({ lessonId, sessionId, seconds: Math.round(pending), position: el.currentTime, duration: el.duration });
+      pending = 0;
+      fetch("/api/progress", { method: "POST", headers: { "content-type": "application/json" }, body, keepalive })
+        .then((r) => r.json()).then((j) => { if (j.completed && !completedSent) { completedSent = true; router.refresh(); } }).catch(() => {});
+    };
+    const onLoaded = () => { if (startAt > 5) el.currentTime = startAt; };
+    const onTime = () => {
+      if (lastT >= 0 && el.currentTime > lastT && el.currentTime - lastT < 2) pending += el.currentTime - lastT;
+      lastT = el.currentTime;
+    };
+    const onSeek = () => { lastT = el.currentTime; };
+    const onPause = () => flush();
+    const timer = setInterval(() => { if (pending >= 15) flush(); }, 5000);
+    const onHide = () => flush(true);
+    el.addEventListener("loadedmetadata", onLoaded); el.addEventListener("timeupdate", onTime); el.addEventListener("seeked", onSeek);
+    el.addEventListener("pause", onPause); el.addEventListener("ended", onPause); window.addEventListener("pagehide", onHide);
+    return () => {
+      clearInterval(timer); window.removeEventListener("pagehide", onHide);
+      el.removeEventListener("loadedmetadata", onLoaded); el.removeEventListener("timeupdate", onTime); el.removeEventListener("seeked", onSeek);
+      el.removeEventListener("pause", onPause); el.removeEventListener("ended", onPause); flush(true);
+    };
+  }, [lessonId, startAt, track, router]);
+
+  return <div><video ref={video} src={videoUrl} controls playsInline className="aspect-video w-full rounded-xl bg-black" />{nextHref && <a href={nextHref} className="mt-3 inline-block text-sm underline">Next lesson →</a>}</div>;
 }

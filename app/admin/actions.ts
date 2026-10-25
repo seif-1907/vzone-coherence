@@ -66,6 +66,28 @@ export async function addLesson(courseId: string, f: FormData) {
   revalidatePath(`/admin/courses/${courseId}`);
 }
 
+export async function createVideoUpload(courseId: string, filename: string) {
+  await requireAdmin();
+  const path = `${courseId}/${crypto.randomUUID()}-${filename.replace(/[^\w.\-]+/g, "_")}`;
+  const { data, error } = await createAdmin().storage.from("videos").createSignedUploadUrl(path);
+  if (error) throw new Error(error.message);
+  return { path, token: data.token };
+}
+
+export async function registerVideo(courseId: string, input: { path: string; title: string; description: string; mime: string; isPreview: boolean; coverUrl: string }) {
+  await requireAdmin();
+  const db = createAdmin();
+  const { data: last } = await db.from("lessons").select("position").eq("course_id", courseId).order("position", { ascending: false }).limit(1).maybeSingle();
+  const { data: lesson, error } = await db.from("lessons").insert({
+    course_id: courseId, title: input.title, description: input.description || null, cover_url: input.coverUrl || null,
+    position: (last?.position ?? 0) + 1, is_preview: input.isPreview,
+  }).select("id").single();
+  if (error) throw new Error(error.message);
+  const { error: mediaError } = await db.from("lesson_media").insert({ lesson_id: lesson.id, storage_path: input.path, mime_type: input.mime || "video/mp4" });
+  if (mediaError) throw new Error(mediaError.message);
+  revalidatePath(`/admin/courses/${courseId}`);
+}
+
 export async function toggleLessonPreview(courseId: string, lessonId: string, value: boolean) {
   await requireAdmin();
   await createAdmin().from("lessons").update({ is_preview: value }).eq("id", lessonId);
@@ -86,7 +108,10 @@ export async function moveLesson(courseId: string, lessonId: string, dir: -1 | 1
 
 export async function deleteLesson(courseId: string, lessonId: string) {
   await requireAdmin();
-  await createAdmin().from("lessons").delete().eq("id", lessonId);
+  const db = createAdmin();
+  const { data: media } = await db.from("lesson_media").select("storage_path").eq("lesson_id", lessonId).maybeSingle();
+  if (media?.storage_path) await db.storage.from("videos").remove([media.storage_path]);
+  await db.from("lessons").delete().eq("id", lessonId);
   revalidatePath(`/admin/courses/${courseId}`);
 }
 

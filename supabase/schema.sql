@@ -63,8 +63,11 @@ create index on public.lessons(course_id, position);
 -- Video ids live in a separate table so they are never exposed to people who may not watch.
 create table public.lesson_media (
   lesson_id uuid primary key references public.lessons(id) on delete cascade,
-  vimeo_id text not null,
-  vimeo_hash text
+  vimeo_id text,
+  vimeo_hash text,
+  storage_path text,
+  mime_type text,
+  check (vimeo_id is not null or storage_path is not null)
 );
 
 create table public.documents (
@@ -322,6 +325,9 @@ alter default privileges in schema public grant all on tables to service_role;
 -- ───────────── storage ─────────────
 insert into storage.buckets (id, name, public) values ('documents', 'documents', false)
   on conflict (id) do nothing;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('videos', 'videos', false, 524288000, array['video/mp4', 'video/webm', 'video/quicktime'])
+on conflict (id) do nothing;
 insert into storage.buckets (id, name, public) values ('covers', 'covers', true)
   on conflict (id) do nothing;
 -- Uploads/downloads for documents are done server-side with the service role and signed URLs.
