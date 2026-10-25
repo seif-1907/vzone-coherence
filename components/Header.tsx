@@ -10,7 +10,7 @@ export default function Header({ user }: { user: { name: string; admin: boolean 
         <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
           <Link href="/" aria-label="The V-Zone Coherence">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logo.png" alt="The V-Zone Coherence" className="h-20 w-auto" />
+            <img src="/images/logo-transparent.png" alt="The V-Zone Coherence" className="h-20 w-auto" />
           </Link>
           <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 font-serif text-xl">
             <Link href="/" className="hover:text-sage-dark">V-Zone Coherence</Link>
